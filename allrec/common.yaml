@@ -1,0 +1,31 @@
+run_id: AllRec
+rand_seed: 2026
+reproducibility: True
+cache_dir: cache/
+log_dir: log/
+swanlab_log_dir: swanlog/
+ckpt_dir: ckpt/
+train_batch_size: 256
+eval_batch_size: 256
+lr: 0.0003
+weight_decay: 0.01
+warmup_rate: 0.2
+steps: ~
+epochs: 150
+max_grad_norm: 1.0
+eval_interval: 1
+patience: 20
+topk: [5, 10]
+metrics: [ndcg, recall]
+val_metric: ndcg@10
+image_feature_extractor: google/siglip-so400m-patch14-384
+text_feature_extractor: sentence-transformers/sentence-t5-base
+use_swanlab: False
+model: "TIGER"
+max_item_seq_len: 20
+dataset: "AmazonReviews2014"
+category: "Toys_and_Games"
+split: leave_one_out
+tokenizer_datasets_mode: "slide_window"
+data_loader_num_workers: 4
+pin_memory: True
