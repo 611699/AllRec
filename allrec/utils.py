@@ -154,7 +154,7 @@ def maybe_log_custom_pipeline(pipeline_cls: type, config: dict) -> None:
         return
     logger = getLogger()
     log(
-        f"使用模型专用 Pipeline: {pipeline_cls.__name__} (模块 {pipeline_cls.__module__})",
+        f"Using custom pipeline: {pipeline_cls.__name__} (module {pipeline_cls.__module__})",
         accelerator,
         logger,
         level='info',

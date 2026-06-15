@@ -21,7 +21,7 @@ val_metric: ndcg@10
 image_feature_extractor: google/siglip-so400m-patch14-384
 text_feature_extractor: sentence-transformers/sentence-t5-base
 use_swanlab: False
-model: "TIGER"
+model: "MMPGR"
 max_item_seq_len: 20
 dataset: "AmazonReviews2014"
 category: "Toys_and_Games"

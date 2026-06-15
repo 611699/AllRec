@@ -43,20 +43,6 @@ class MMPGR_Tokenizer(AbstractTokenizer):
         return f"OPQ{n_digit},IVF1,PQ{n_digit}x{self.n_codebook_bits}"
     def _get_codebook_bits(self, n_codebook):
         import math
-        """
-        根据每个子码本大小 (codebook_size) 计算需要多少 bit 来表示一个索引.
-        参数:
-            n_codebook (int): 实际传入的 codebook_size, 即每个子码本的槽位数, 比如 256.
-        返回:
-            int: 表示一个索引所需的二进制位数 (bit 数).
-        逻辑:
-        - 如果一个子码本有 codebook_size 个离散槽位,
-        那么就需要 log2(codebook_size) 个 bit 才能唯一表示每个槽位.
-            例如:
-                codebook_size = 256 -> log2(256) = 8 bit
-                codebook_size = 16  -> log2(16)  = 4 bit
-        - 这里要求 codebook_size 必须是 2 的幂,否则无法保证整数位数.
-        """
         x = math.log2(n_codebook)
         assert x.is_integer() and x >= 0, "Invalid value for n_codebook"
         return int(x)

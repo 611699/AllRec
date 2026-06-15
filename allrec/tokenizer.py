@@ -133,9 +133,9 @@ class AbstractTokenizer:
                 else:
                     meta_sentences.append("")
                     missing_meta_count += 1
-            self.log(f"[Tokenizer] 文本元数据统计: 总物品数 {dataset.n_items - 1}, "
-                    f"缺失文本元数据数 {missing_meta_count}, "
-                    f"填充比例 {missing_meta_count / (dataset.n_items - 1):.2%}")
+            self.log(f"[Tokenizer] Text metadata stats: total items {dataset.n_items - 1}, "
+                    f"missing text metadata {missing_meta_count}, "
+                    f"fallback ratio {missing_meta_count / (dataset.n_items - 1):.2%}")
             sent_emb_model = SentenceTransformer(self.config['text_feature_extractor']).to(self.config["device"])
             text_embs = sent_emb_model.encode(
                 meta_sentences,
@@ -154,15 +154,6 @@ class AbstractTokenizer:
             return text_embs
     def download_images_from_dataset(self, dataset: AbstractDataset):
         import time
-        """
-        从 dataset 获取 item2imgUrl & item2id,多线程下载图片,并进行下载验证.
-        遇到下载失败的情况会记录失败清单,后续编码阶段缺失图片会使用随机向量兜底.
-        参数:
-            dataset (AbstractDataset): 数据集对象
-                - dataset.item2id: {asin -> int_id}
-                - dataset.item2imgUrl: {asin -> img_url}
-                - dataset.item2allmeta: {asin -> meta信息,至少要有 categories 和 imUrl}
-        """
         item2imgUrl = dataset.item2imgUrl
         item2id = dataset.id_mapping['item2id']
         save_dir = os.path.join(dataset.cache_dir, "raw", "images")
@@ -219,9 +210,9 @@ class AbstractTokenizer:
             with open(fail_file, "w", encoding="utf-8") as f:
                 for asin, reason in failed:
                     f.write(f"{asin}\t{reason}\n")
-            self.log(f"[Tokenizer] ⚠️ 下载失败 {len(failed)} 条，详情见 {fail_file}")
+            self.log(f"[Tokenizer] Failed to download {len(failed)} images; details saved to {fail_file}")
         else:
-            self.log("✅ 所有图片下载成功或已存在！")
+            self.log("[Tokenizer] All images were downloaded successfully or already exist.")
         all_files = os.listdir(save_dir)
         total_images = len(all_files)
         jpg_images = len([f for f in all_files if f.lower().endswith(".jpg")])
@@ -229,21 +220,21 @@ class AbstractTokenizer:
         from collections import Counter
         ext_counter = Counter(os.path.splitext(
             f)[1].lower() for f in all_files)
-        self.log("\n===== 下载统计 =====")
-        self.log(f"[Tokenizer] 📦 物品总数: {expected}")
-        self.log(f"🖼️ 图片文件总数: {total_images}")
-        self.log(f"🖼️ JPG 文件数: {jpg_images}")
-        self.log("\n[Tokenizer] 📊 文件扩展名分布:")
+        self.log("\n===== Download statistics =====")
+        self.log(f"[Tokenizer] Expected item count: {expected}")
+        self.log(f"[Tokenizer] Image file count: {total_images}")
+        self.log(f"[Tokenizer] JPG file count: {jpg_images}")
+        self.log("\n[Tokenizer] File extension distribution:")
         for ext, count in ext_counter.items():
-            self.log(f"   {ext or '[无扩展名]'}: {count}")
+            self.log(f"   {ext or '[no extension]'}: {count}")
         if total_images == expected:
-            self.log("✅ 图片总数与物品数一致")
+            self.log("[Tokenizer] Image count matches item count.")
         else:
-            self.log("⚠️ 图片总数与物品数不一致，可能有下载失败")
+            self.log("[Tokenizer] Image count does not match item count; downloads may have failed.")
         if jpg_images == expected:
-            self.log("✅ JPG 文件数与物品数一致")
+            self.log("[Tokenizer] JPG file count matches item count.")
         else:
-            self.log("⚠️ JPG 文件数与物品数不一致，可能有非 jpg 格式或缺失")
+            self.log("[Tokenizer] JPG file count does not match item count; files may be missing or non-JPG.")
     def _compute_similarity_matrix(self, text_embs: np.ndarray, image_embs: np.ndarray, dir: str):
         import numpy as np
         import os
@@ -266,7 +257,7 @@ class AbstractTokenizer:
             min_val = np.nanmin(matrix_no_diag)
             mean_val = np.nanmean(matrix_no_diag)
             std_val = np.nanstd(matrix_no_diag)
-            self.log(f"[Tokenizer] {name} (excluding diagonal) → "
+            self.log(f"[Tokenizer] {name} (excluding diagonal) -> "
                     f"max: {max_val:.4f}, min: {min_val:.4f}, mean: {mean_val:.4f}, std: {std_val:.4f}")
             return min_val, max_val
         text_min, text_max = compute_stats(text_similarity_matrix, "Text similarity matrix")
@@ -276,10 +267,10 @@ class AbstractTokenizer:
         np.save(text_similarity_matrix_file, text_similarity_matrix)
         np.save(image_similarity_matrix_file, image_similarity_matrix)
         self.log(f"[Tokenizer] Saved normalized similarity matrices to:")
-        self.log(f"  • {text_similarity_matrix_file}")
-        self.log(f"  • {image_similarity_matrix_file}")
-        self.log(f"[Tokenizer] Normalized text matrix → range: [{text_similarity_matrix.min():.4f}, {text_similarity_matrix.max():.4f}]")
-        self.log(f"[Tokenizer] Normalized image matrix → range: [{image_similarity_matrix.min():.4f}, {image_similarity_matrix.max():.4f}]")
+        self.log(f"  - {text_similarity_matrix_file}")
+        self.log(f"  - {image_similarity_matrix_file}")
+        self.log(f"[Tokenizer] Normalized text matrix -> range: [{text_similarity_matrix.min():.4f}, {text_similarity_matrix.max():.4f}]")
+        self.log(f"[Tokenizer] Normalized image matrix -> range: [{image_similarity_matrix.min():.4f}, {image_similarity_matrix.max():.4f}]")
         return text_similarity_matrix, image_similarity_matrix
     def tokenize_datasets(self, datasets: dict) -> dict:
         from datasets import load_from_disk

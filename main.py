@@ -6,7 +6,7 @@ from allrec.utils import get_pipeline, parse_command_line_args
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model', type=str, default='TIGER', help='Model name')
+    parser.add_argument('--model', type=str, default='MMPGR', help='Model name')
     parser.add_argument('--dataset', type=str, default='AmazonReviews2014', help='Dataset name')
     parser.add_argument('--category', type=str, default='Toys_and_Games', help='Category name')
     parser.add_argument('--checkpoint', type=str, default=None, help='Checkpoint path')
@@ -27,10 +27,10 @@ if __name__ == '__main__':
         pipeline.run()
     except KeyboardInterrupt:
         if int(os.environ.get("RANK", 0)) == 0:
-            print("\n[!] 用户取消操作，正在清理分布式环境...")
+            print("\n[!] User interrupted execution; cleaning up distributed state...")
     except Exception as e:
         if int(os.environ.get("RANK", 0)) == 0:
-            print(f"\n[!] 发生异常: {e}")
+            print(f"\n[!] Exception occurred: {e}")
         raise e
     finally:
         if torch.distributed.is_initialized():

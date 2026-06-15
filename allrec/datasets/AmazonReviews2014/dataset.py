@@ -208,10 +208,10 @@ class AmazonReviews2014(AbstractDataset):
             save_file = os.path.join(output_path, "metadata.asin_img.json")
             with open(save_file, "w", encoding="utf-8") as f:
                 json.dump(filtered_meta, f, indent=4, ensure_ascii=False)
-            print(f"✅ 已保存 {len(filtered_meta)} 条 asin+imUrl 到 {save_file}")
-            print(f"⚠️ 其中 {len(missing_imurl_asins)} 条原本缺失 imUrl")
-            print(f"   - {len(missing_imurl_asins) - len(missing_category_asins)} 条用同类补图")
-            print(f"   - {len(missing_category_asins)} 条缺少同类图片")
+            print(f"Saved {len(filtered_meta)} asin+imUrl records to {save_file}")
+            print(f"{len(missing_imurl_asins)} records originally missed imUrl")
+            print(f"   - {len(missing_imurl_asins) - len(missing_category_asins)} records filled with same-category images")
+            print(f"   - {len(missing_category_asins)} records had no same-category image candidates")
             return item2imgUrl
         item2imgUrl = get_asin_img(item2allmeta, output_path)
         item2coretext = self._extract_meta_sentences(metadata=item2allmeta)

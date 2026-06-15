@@ -128,8 +128,8 @@ class Pipeline:
                 if key == list(test_results.keys())[-1]:
                     print()
             self.log(f'Test Results: {test_results}')
-            self.log(f"时间日期：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-            print(f"时间日期：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            self.log(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            print(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         self.trainer.end()
         return {
             'best_epoch': best_epoch,
