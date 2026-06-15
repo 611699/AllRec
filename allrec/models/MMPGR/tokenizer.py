@@ -52,7 +52,7 @@ class MMPGR_Tokenizer(AbstractTokenizer):
             for item in item_seq:
                 items_for_training.add(item)
         self.log(
-            f"Items for training:{len(items_for_training)} of {dataset.n_items-1}")
+            f"[Tokenizer] Items for training: {len(items_for_training)} / {dataset.n_items-1}")
         mask = np.zeros(dataset.n_items-1, dtype=bool)
         for item in items_for_training:
             mask[dataset.item2id[item] - 1] = True
@@ -78,7 +78,7 @@ class MMPGR_Tokenizer(AbstractTokenizer):
             index_factory,
             faiss.METRIC_INNER_PRODUCT
         )
-        self.log(f'[TOKENIZER] Training {cache_label} OPQ index: {index_factory}')
+        self.log(f'[Tokenizer] Training {cache_label} OPQ index: {index_factory}')
         if self.config['opq_use_gpu']:
             index = faiss.index_cpu_to_gpu(
                 res, self.config['opq_gpu_id'], index, co)
@@ -109,7 +109,7 @@ class MMPGR_Tokenizer(AbstractTokenizer):
         for i in range(pq_codes.shape[0]):
             item = self.id2item[i + 1]
             item2sem_ids[item] = tuple(pq_codes[i].tolist())
-        self.log(f'[TOKENIZER] Saving semantic IDs to {sem_ids_path}...')
+        self.log(f'[Tokenizer] Saving semantic IDs to {sem_ids_path}')
         os.makedirs(os.path.dirname(sem_ids_path), exist_ok=True)
         with open(sem_ids_path, 'w') as f:
             json.dump(item2sem_ids, f, indent=4, ensure_ascii=False)
@@ -223,7 +223,7 @@ class MMPGR_Tokenizer(AbstractTokenizer):
         pca = PCA(n_components=n_components, whiten=True, random_state=2026)
         embs = pca.fit_transform(embs).astype(np.float32, copy=False)
         embs = self._l2_normalize(embs)
-        self.log(f"[Tokenizer] PCA applied for {name}, shape:{embs.shape}")
+        self.log(f"[Tokenizer] PCA applied for {name}, shape: {embs.shape}")
         return embs
     def _semantic_cache_paths(self, dataset: AbstractDataset) -> dict:
         cache_dir = os.path.join(dataset.cache_dir, "processed", "MMPGR")
@@ -337,7 +337,7 @@ class MMPGR_Tokenizer(AbstractTokenizer):
             all_embs = self._apply_pca_for_semantic(img_embs, n_components, "image semantic ID") if use_pca else img_embs
         else:
             raise ValueError(f"Invalid modality: {modality}")
-        self.log(f"[Tokenizer] Semantic ID embeddings shape:{all_embs.shape}")
+        self.log(f"[Tokenizer] Semantic ID embeddings shape: {all_embs.shape}")
         item2sem_ids = self._generate_semantic_id_opq(
             all_embs,
             sem_ids_path,

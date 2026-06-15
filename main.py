@@ -27,17 +27,17 @@ if __name__ == '__main__':
         pipeline.run()
     except KeyboardInterrupt:
         if int(os.environ.get("RANK", 0)) == 0:
-            print("\n[!] User interrupted execution; cleaning up distributed state...")
+            print("\n[Main] User interrupted execution; cleaning up distributed state...")
     except Exception as e:
         if int(os.environ.get("RANK", 0)) == 0:
-            print(f"\n[!] Exception occurred: {e}")
+            print(f"\n[Main] Exception: {e}")
         raise e
     finally:
         if torch.distributed.is_initialized():
             torch.distributed.destroy_process_group()
-            print(f"Rank {os.environ.get('RANK', 0)}: Distributed process group destroyed.")
+            print(f"[Main] Rank {os.environ.get('RANK', 0)}: distributed process group destroyed.")
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
         if swanlab.get_run() is not None and int(os.environ.get("RANK", 0)) == 0:
             swanlab.finish()
-            print("Rank 0: SwanLab experiment finished.")
+            print("[Main] Rank 0: SwanLab experiment finished.")

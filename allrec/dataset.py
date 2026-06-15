@@ -64,10 +64,10 @@ class AbstractDataset:
                 datasets['train']['item_seq'].append(self.all_item_seqs[user][:-2])
         for split in datasets:
             datasets[split] = Dataset.from_dict(datasets[split])
-        self.log(f"Leave-One-Out split done. "
-                 f"#train: {len(datasets['train']):>8}, "
-                 f"#val: {len(datasets['val']):>8}, "
-                 f"#test: {len(datasets['test']):>8}")
+        self.log(f"[Dataset] Leave-One-Out split done: "
+                 f"train={len(datasets['train']):>8}, "
+                 f"val={len(datasets['val']):>8}, "
+                 f"test={len(datasets['test']):>8}")
         return datasets
     def split(self):
         if self.split_data is not None:

@@ -40,7 +40,7 @@ class Trainer:
         total_n_steps = len(train_dataloader) * self.config['epochs']
         warmup_steps = int(self.config['warmup_rate'] * total_n_steps)
         n_epochs = np.ceil(total_n_steps / len(train_dataloader)).astype(int)
-        self.log(f'Total training steps (per device): {total_n_steps}, warmup_steps: {warmup_steps}')
+        self.log(f'[Trainer] Total training steps per device: {total_n_steps}, warmup steps: {warmup_steps}')
         optimizer = AdamW(
             self.model.parameters(),
             lr=self.config['lr'],
@@ -55,8 +55,8 @@ class Trainer:
         self.model, optimizer, scheduler, train_dataloader, val_dataloader = self.accelerator.prepare(
             self.model, optimizer, scheduler, train_dataloader, val_dataloader
         )
-        print(f"n_epochs: {n_epochs}, rank: {self.accelerator.process_index}, num_processes: {self.accelerator.num_processes},len(train_dataloader): {len(train_dataloader)}")
-        self.log(f"n_epochs: {n_epochs}, rank: {self.accelerator.process_index}, num_processes: {self.accelerator.num_processes},len(train_dataloader): {len(train_dataloader)}")
+        print(f"[Trainer] Epochs: {n_epochs}, rank: {self.accelerator.process_index}, num processes: {self.accelerator.num_processes}, train batches: {len(train_dataloader)}")
+        self.log(f"[Trainer] Epochs: {n_epochs}, rank: {self.accelerator.process_index}, num processes: {self.accelerator.num_processes}, train batches: {len(train_dataloader)}")
         best_epoch = 0
         best_val_score = -1
         for epoch in range(n_epochs):
@@ -90,10 +90,10 @@ class Trainer:
                     },
                     step=epoch + 1
                 )
-            msg = f'[Epoch {epoch + 1}] Train Loss: {avg_loss:.8f}'
+            msg = f'[Trainer][Epoch {epoch + 1}] Train loss: {avg_loss:.8f}'
             train_end_time = time.time()
             train_time = train_end_time - train_start_time
-            msg += f' Train Time: {train_time:.2f}s'
+            msg += f', train time: {train_time:.2f}s'
             self.log(msg)
             if (epoch + 1) % self.config['eval_interval'] == 0:
                 eval_start_time = time.time()
@@ -106,10 +106,10 @@ class Trainer:
                             swanlab_log(
                                 {f"Val_Metric/{key}": all_results[key]}, step=epoch + 1
                             )
-                        print(f'{Colors.GREEN}{key}: {Colors.MAGENTA}{all_results[key]:.5f}{Colors.RESET} ', end="")
+                        print(f'[Trainer] {Colors.GREEN}{key}: {Colors.MAGENTA}{all_results[key]:.5f}{Colors.RESET} ', end="")
                         if key == list(all_results.keys())[-1]:
                             print()
-                    self.log(f'[Epoch {epoch + 1}] Val Results: {all_results}, Val Time: {eval_time:.2f}s')
+                    self.log(f'[Trainer][Epoch {epoch + 1}] Validation results: {all_results}, validation time: {eval_time:.2f}s')
                 val_score = all_results[self.config['val_metric']]
                 if val_score > best_val_score:
                     best_val_score = val_score
@@ -119,11 +119,11 @@ class Trainer:
                             self.model)
                         torch.save(unwrapped_model.state_dict(),
                                     self.saved_model_ckpt)
-                        self.log(f'[Epoch {epoch + 1}] Saved model checkpoint to {self.saved_model_ckpt}')
+                        self.log(f'[Trainer][Epoch {epoch + 1}] Saved model checkpoint: {self.saved_model_ckpt}')
                 if self.config['patience'] is not None and epoch + 1 - best_epoch >= self.config['patience']:
-                    self.log(f'Early stopping at epoch {epoch + 1}')
+                    self.log(f'[Trainer] Early stopping at epoch {epoch + 1}')
                     break
-        self.log(f'Best epoch: {best_epoch}, Best val score: {best_val_score}')
+        self.log(f'[Trainer] Best epoch: {best_epoch}, best validation score: {best_val_score}')
         return best_epoch, best_val_score
     def evaluate(self, dataloader, split='test'):
         self.model.eval()

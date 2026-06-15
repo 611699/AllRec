@@ -154,7 +154,7 @@ def maybe_log_custom_pipeline(pipeline_cls: type, config: dict) -> None:
         return
     logger = getLogger()
     log(
-        f"Using custom pipeline: {pipeline_cls.__name__} (module {pipeline_cls.__module__})",
+        f"[Utils] Using custom pipeline: {pipeline_cls.__name__} (module: {pipeline_cls.__module__})",
         accelerator,
         logger,
         level='info',
@@ -240,9 +240,9 @@ def download_file(url: str, path: str) -> None:
     if response.status_code == 200:
         with open(path, 'wb') as f:
             f.write(response.content)
-        logger.info(f"Downloaded {os.path.basename(path)}")
+        logger.info(f"[Utils] Downloaded file: {os.path.basename(path)}")
     else:
-        logger.error(f"Failed to download {os.path.basename(path)}")
+        logger.error(f"[Utils] Failed to download file: {os.path.basename(path)}")
 
 def list_to_str(l: Union[list, str], remove_blank=False) -> str:
     ret = ''

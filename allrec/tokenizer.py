@@ -47,7 +47,7 @@ class AbstractTokenizer:
                     existing = [n for n in os.listdir(images_dir) if n.lower().endswith(".jpg")]
                     local_ready = len(existing) >= int(0.8 * expected)
                     if local_ready:
-                        self.log(f"[Tokenizer] Local images ready ({len(existing)}/{expected} jpg) at {images_dir}, skip downloading.")
+                        self.log(f"[Tokenizer] Local images ready ({len(existing)}/{expected} jpg) at {images_dir}; skipping download.")
             except Exception as e:
                 self.log(f"[Tokenizer] Local image readiness check failed: {e}", level="warning")
             if not local_ready:
@@ -65,7 +65,7 @@ class AbstractTokenizer:
                 else:
                     self.log("[Tokenizer] No http(s) image URLs provided; will encode from local files if present, otherwise use random vectors.", level="warning")
             self.log(
-                f"[Tokenizer] Extracting image embeddings with {self.config['image_feature_extractor']} ...")
+                f"[Tokenizer] Extracting image embeddings with {self.config['image_feature_extractor']}...")
             image_feature_extractor = self.config['image_feature_extractor']
             processor = AutoProcessor.from_pretrained(image_feature_extractor)
             siglip_model = SiglipModel.from_pretrained(
@@ -94,7 +94,7 @@ class AbstractTokenizer:
                         img_embs.append(img_emb.cpu().numpy().squeeze())
                 except Exception as e:
                     self.log(
-                        f"[Tokenizer] Failed to process image {img_path}:{e}")
+                        f"[Tokenizer] Failed to process image {img_path}: {e}")
                     img_embs.append(np.random.randn(
                         emb_dim).astype(np.float32))
                     self.log(
@@ -107,11 +107,11 @@ class AbstractTokenizer:
             self.log(
                 f"[Tokenizer] Saved image embeddings to {img_emb_file}")
             self.log(
-                f"[Tokenizer] Saved Image embeddings shape:{img_embs.shape}")
+                f"[Tokenizer] Saved image embeddings shape: {img_embs.shape}")
             return img_embs
     def _encode_text_embs(self, dataset: AbstractDataset, emb_dir: str) -> np.ndarray:
         from sentence_transformers import SentenceTransformer
-        self.log(f"[Tokenizer] begin Encoding text embedding")
+        self.log(f"[Tokenizer] Begin encoding text embeddings.")
         os.makedirs(emb_dir, exist_ok=True)
         text_emb_file = os.path.join(emb_dir, f"{self.config['text_feature_extractor'].replace('/', '-')}_text_emb.json")
         text_embs = None
@@ -122,7 +122,7 @@ class AbstractTokenizer:
                 return text_embs
         else:
             self.log(
-                f"[Tokenizer] Extracting text embeddings with {self.config['text_feature_extractor']} ...")
+                f"[Tokenizer] Extracting text embeddings with {self.config['text_feature_extractor']}...")
             missing_meta_count = 0
             meta_sentences = []
             for i in range(1, dataset.n_items):
@@ -133,9 +133,9 @@ class AbstractTokenizer:
                 else:
                     meta_sentences.append("")
                     missing_meta_count += 1
-            self.log(f"[Tokenizer] Text metadata stats: total items {dataset.n_items - 1}, "
-                    f"missing text metadata {missing_meta_count}, "
-                    f"fallback ratio {missing_meta_count / (dataset.n_items - 1):.2%}")
+            self.log(f"[Tokenizer] Text metadata stats: total items={dataset.n_items - 1}, "
+                    f"missing text metadata={missing_meta_count}, "
+                    f"fallback ratio={missing_meta_count / (dataset.n_items - 1):.2%}")
             sent_emb_model = SentenceTransformer(self.config['text_feature_extractor']).to(self.config["device"])
             text_embs = sent_emb_model.encode(
                 meta_sentences,
@@ -150,7 +150,7 @@ class AbstractTokenizer:
             self.log(
                 f"[Tokenizer] Saved text embeddings to {text_emb_file}")
             self.log(
-                f"[Tokenizer] Saved text embeddings shape:{text_embs.shape}")
+                f"[Tokenizer] Saved text embeddings shape: {text_embs.shape}")
             return text_embs
     def download_images_from_dataset(self, dataset: AbstractDataset):
         import time
@@ -194,7 +194,7 @@ class AbstractTokenizer:
                 if attempt < max_retries - 1:
                     time.sleep(attempt + 1)
                 else:
-                    self.log(f"[Tokenizer] Failed after {max_retries} attempts,url:{url},Reason:{last_error}")
+                    self.log(f"[Tokenizer] Failed after {max_retries} attempts, url: {url}, reason: {last_error}")
                     return asin, last_error
         with ThreadPoolExecutor(max_workers=num_threads) as executor:
             futures = {
@@ -220,13 +220,13 @@ class AbstractTokenizer:
         from collections import Counter
         ext_counter = Counter(os.path.splitext(
             f)[1].lower() for f in all_files)
-        self.log("\n===== Download statistics =====")
+        self.log("[Tokenizer] Download statistics:")
         self.log(f"[Tokenizer] Expected item count: {expected}")
         self.log(f"[Tokenizer] Image file count: {total_images}")
         self.log(f"[Tokenizer] JPG file count: {jpg_images}")
-        self.log("\n[Tokenizer] File extension distribution:")
+        self.log("[Tokenizer] File extension distribution:")
         for ext, count in ext_counter.items():
-            self.log(f"   {ext or '[no extension]'}: {count}")
+            self.log(f"[Tokenizer] File extension {ext or '[no extension]'}: {count}")
         if total_images == expected:
             self.log("[Tokenizer] Image count matches item count.")
         else:
@@ -245,7 +245,7 @@ class AbstractTokenizer:
             image_similarity_matrix = np.load(image_similarity_matrix_file)
             self.log(f"[Tokenizer] Loaded cached similarity matrices from {text_similarity_matrix_file} and {image_similarity_matrix_file}")
             return text_similarity_matrix, image_similarity_matrix
-        self.log("[Tokenizer] Computing similarity matrices ...")
+        self.log("[Tokenizer] Computing similarity matrices...")
         text_similarity_matrix_ori :np.ndarray= np.matmul(text_embs, text_embs.T)
         image_similarity_matrix_ori :np.ndarray= np.matmul(image_embs, image_embs.T)
         text_similarity_matrix :np.ndarray= text_similarity_matrix_ori.astype(np.float32)
@@ -266,9 +266,8 @@ class AbstractTokenizer:
         image_similarity_matrix =2*(image_similarity_matrix - image_min) / (image_max - image_min + 1e-12)-1
         np.save(text_similarity_matrix_file, text_similarity_matrix)
         np.save(image_similarity_matrix_file, image_similarity_matrix)
-        self.log(f"[Tokenizer] Saved normalized similarity matrices to:")
-        self.log(f"  - {text_similarity_matrix_file}")
-        self.log(f"  - {image_similarity_matrix_file}")
+        self.log(f"[Tokenizer] Saved normalized text similarity matrix to {text_similarity_matrix_file}")
+        self.log(f"[Tokenizer] Saved normalized image similarity matrix to {image_similarity_matrix_file}")
         self.log(f"[Tokenizer] Normalized text matrix -> range: [{text_similarity_matrix.min():.4f}, {text_similarity_matrix.max():.4f}]")
         self.log(f"[Tokenizer] Normalized image matrix -> range: [{image_similarity_matrix.min():.4f}, {image_similarity_matrix.max():.4f}]")
         return text_similarity_matrix, image_similarity_matrix

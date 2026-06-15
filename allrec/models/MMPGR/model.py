@@ -162,18 +162,18 @@ class MMPGR(AbstractModel):
         self.item_id2tokens = self._map_item_tokens().to(self.config['device'])
         self.logger = getLogger()
         self.model_name = 'MMPGR'
-        self.log(f"MMPGR init")
+        self.log(f"[Model] Initializing MMPGR.")
         self.log(
-            f'Item_id2tokens to tokens mapping matrix shape: {self.item_id2tokens.shape}')
+            f'[Model] item_id2tokens mapping shape: {self.item_id2tokens.shape}')
         self.config = config
         self.text_item_embs = torch.from_numpy(tokenizer.text_embs).to(torch.float32).to(self.config['device'])
         memory_bytes = self.text_item_embs.nelement() * self.text_item_embs.element_size()
         memory_mb = memory_bytes / 1024 / 1024
-        self.log(f"text_item_embs cached on GPU, shape: {self.text_item_embs.shape}, memory: {memory_mb:.2f} MB")
+        self.log(f"[Model] Cached text item embeddings on GPU: shape={self.text_item_embs.shape}, memory={memory_mb:.2f} MB")
         self.image_item_embs = torch.from_numpy(tokenizer.image_embs).to(torch.float32).to(self.config['device'])
         memory_bytes = self.image_item_embs.nelement() * self.image_item_embs.element_size()
         memory_mb = memory_bytes / 1024 / 1024
-        self.log(f"image_item_embs cached on GPU, shape: {self.image_item_embs.shape}, memory: {memory_mb:.2f} MB")
+        self.log(f"[Model] Cached image item embeddings on GPU: shape={self.image_item_embs.shape}, memory={memory_mb:.2f} MB")
         self.text_similarity_min = float(tokenizer.text_similarity_min)
         self.text_similarity_max = float(tokenizer.text_similarity_max)
         self.image_similarity_min = float(tokenizer.image_similarity_min)

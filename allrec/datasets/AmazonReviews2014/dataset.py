@@ -14,7 +14,7 @@ class AmazonReviews2014(AbstractDataset):
         super(AmazonReviews2014, self).__init__(config)
         self.category = config['category']
         self._check_available_category()
-        self.log(f'[DATASET] Amazon Reviews 2014 for category: {self.category}')
+        self.log(f'[Dataset] Amazon Reviews 2014 category: {self.category}')
         self.cache_dir = os.path.join(config['cache_dir'], 'AmazonReviews2014', self.category)
         self._download_and_process_raw()
     def _check_available_category(self):
@@ -40,7 +40,7 @@ class AmazonReviews2014(AbstractDataset):
             l = l.replace(b'true', b'True').replace(b'false', b'False')
             yield eval(l)
     def _load_reviews(self, path: str) -> list:
-        self.log('[DATASET] Loading reviews...')
+        self.log('[Dataset] Loading reviews...')
         reviews = []
         total_lines = sum(1 for _ in self._parse_gz(path))
         for inter in tqdm(self._parse_gz(path), total=total_lines, desc="Loading reviews"):
@@ -59,7 +59,7 @@ class AmazonReviews2014(AbstractDataset):
             item_seqs[user] = [item for item, _ in item_time]
         return item_seqs
     def _remap_ids(self, item_seqs: dict) -> tuple[dict, dict]:
-        self.log('[DATASET] Remapping user and item IDs...')
+        self.log('[Dataset] Remapping user and item IDs...')
         for user, items in item_seqs.items():
             if user not in self.id_mapping['user2id']:
                 self.id_mapping['user2id'][user] = len(self.id_mapping['id2user'])
@@ -80,17 +80,17 @@ class AmazonReviews2014(AbstractDataset):
         seq_file = os.path.join(output_path, 'all_item_seqs.json')
         id_mapping_file = os.path.join(output_path, 'id_mapping.json')
         if os.path.exists(seq_file) and os.path.exists(id_mapping_file):
-            self.log('[DATASET] Reviews have been processed...')
+            self.log('[Dataset] Reviews already processed; loading cache.')
             with open(seq_file, 'r') as f:
                 all_item_seqs = json.load(f)
             with open(id_mapping_file, 'r') as f:
                 id_mapping = json.load(f)
             return all_item_seqs, id_mapping
-        self.log('[DATASET] Processing reviews...')
+        self.log('[Dataset] Processing reviews...')
         reviews = self._load_reviews(input_path)
         item_seqs = self._get_item_seqs(reviews)
         all_item_seqs, id_mapping = self._remap_ids(item_seqs)
-        self.log('[DATASET] Saving mapping data...')
+        self.log('[Dataset] Saving mapping data...')
         with open(seq_file, 'w') as f:
             json.dump(all_item_seqs, f, indent=4, ensure_ascii=False)
         with open(id_mapping_file, 'w') as f:
@@ -101,7 +101,7 @@ class AmazonReviews2014(AbstractDataset):
             path: str,
             item2id: dict
         ) -> dict:
-        self.log('[DATASET] Loading metadata...')
+        self.log('[Dataset] Loading metadata...')
         data = {}
         item_asins = set(item2id.keys())
         total_lines = sum(1 for _ in self._parse_gz(path))
@@ -132,7 +132,7 @@ class AmazonReviews2014(AbstractDataset):
         self,
         metadata: dict
     ) -> dict:
-        self.log('[DATASET] Extracting meta sentences (with clear keywords)...')
+        self.log('[Dataset] Extracting meta sentences with clear keywords...')
         item2meta = {}
         total_items = len(metadata)
         for item, meta in tqdm(metadata.items(), total=total_items, desc="Extracting meta sentences", unit="item"):
@@ -164,7 +164,7 @@ class AmazonReviews2014(AbstractDataset):
         asin_img_file = os.path.join(output_path, 'metadata.asin_img.json')
         allmeta_file = os.path.join(output_path, 'metadata.allmeta.json')
         if os.path.exists(coretext_file) and os.path.exists(asin_img_file) and os.path.exists(allmeta_file):
-            self.log('[DATASET] Metadata has been processed (loading cache)...')
+            self.log('[Dataset] Metadata already processed; loading cache.')
             with open(coretext_file, 'r') as f:
                 item2coretext = json.load(f)
             with open(asin_img_file, "r") as f:
@@ -172,7 +172,7 @@ class AmazonReviews2014(AbstractDataset):
             with open(allmeta_file, "r") as f:
                 item2allmeta = json.load(f)
             return item2coretext, item2imgUrl, item2allmeta
-        self.log('[DATASET] Loading metadata from raw file...')
+        self.log('[Dataset] Loading metadata from raw file...')
         item2allmeta = self._load_metadata(
             path=input_path,
             item2id=self.item2id
@@ -208,10 +208,10 @@ class AmazonReviews2014(AbstractDataset):
             save_file = os.path.join(output_path, "metadata.asin_img.json")
             with open(save_file, "w", encoding="utf-8") as f:
                 json.dump(filtered_meta, f, indent=4, ensure_ascii=False)
-            print(f"Saved {len(filtered_meta)} asin+imUrl records to {save_file}")
-            print(f"{len(missing_imurl_asins)} records originally missed imUrl")
-            print(f"   - {len(missing_imurl_asins) - len(missing_category_asins)} records filled with same-category images")
-            print(f"   - {len(missing_category_asins)} records had no same-category image candidates")
+            print(f"[Dataset] Saved {len(filtered_meta)} asin+imUrl records to {save_file}")
+            print(f"[Dataset] Missing imUrl records: {len(missing_imurl_asins)}")
+            print(f"[Dataset] Same-category image fills: {len(missing_imurl_asins) - len(missing_category_asins)}")
+            print(f"[Dataset] Records without same-category image candidates: {len(missing_category_asins)}")
             return item2imgUrl
         item2imgUrl = get_asin_img(item2allmeta, output_path)
         item2coretext = self._extract_meta_sentences(metadata=item2allmeta)

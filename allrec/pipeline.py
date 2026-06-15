@@ -65,7 +65,7 @@ class Pipeline:
             self.tokenizer = get_tokenizer(model_name)(self.config, self.raw_dataset)
         with self.accelerator.main_process_first():
             for k, v in self.split_datasets.items():
-                self.log("split datasets type:{}, len:{}".format(k, len(v)))
+                self.log(f"[Pipeline] Split dataset: split={k}, len={len(v)}")
             self.tokenized_datasets = self.tokenizer.tokenize_datasets(self.split_datasets)
         with self.accelerator.main_process_first():
             self.model = get_model(model_name)(self.config, self.raw_dataset, self.tokenizer)
@@ -74,9 +74,9 @@ class Pipeline:
                     torch.load(checkpoint_path,
                                map_location=self.config['device'])
                 )
-                self.log(f'Loaded model checkpoint from {checkpoint_path}')
-            self.log(self.model)
-            self.log(self.model.n_parameters)
+                self.log(f'[Pipeline] Loaded model checkpoint from {checkpoint_path}')
+            self.log(f"[Model] Architecture:\n{self.model}")
+            self.log(f"[Model] Parameter summary:\n{self.model.n_parameters}")
         self.trainer = get_trainer(model_name)(self.config, self.model, self.tokenizer)
     def run(self):
         train_dataloader = DataLoader(
@@ -87,7 +87,7 @@ class Pipeline:
             num_workers=self.config['data_loader_num_workers'],
             pin_memory=self.config['pin_memory']
         )
-        self.log(f'Train dataloader has record num: {len(self.tokenized_datasets["train"])}')
+        self.log(f'[Pipeline] Train dataloader records: {len(self.tokenized_datasets["train"])}')
         val_dataloader = DataLoader(
             self.tokenized_datasets['val'],
             batch_size=self.config['eval_batch_size'],
@@ -96,7 +96,7 @@ class Pipeline:
             num_workers=self.config['data_loader_num_workers'],
             pin_memory=self.config['pin_memory']
         )
-        self.log(f'Validation dataloader has record num: {len(self.tokenized_datasets["val"])}')
+        self.log(f'[Pipeline] Validation dataloader records: {len(self.tokenized_datasets["val"])}')
         test_dataloader = DataLoader(
             self.tokenized_datasets['test'],
             batch_size=self.config['eval_batch_size'],
@@ -105,7 +105,7 @@ class Pipeline:
             num_workers=self.config['data_loader_num_workers'],
             pin_memory=self.config['pin_memory']
         )
-        self.log(f'Test dataloader has record num: {len(self.tokenized_datasets["test"])}')
+        self.log(f'[Pipeline] Test dataloader records: {len(self.tokenized_datasets["test"])}')
         best_epoch, best_val_score = self.trainer.fit(train_dataloader, val_dataloader)
         self.accelerator.wait_for_everyone()
         self.model = self.accelerator.unwrap_model(self.model)
@@ -115,21 +115,21 @@ class Pipeline:
             self.model, test_dataloader
         )
         if self.accelerator.is_main_process and self.checkpoint_path is None:
-            self.log(f'Loaded best model checkpoint from {self.trainer.saved_model_ckpt}')
+            self.log(f'[Pipeline] Loaded best model checkpoint from {self.trainer.saved_model_ckpt}')
         import time
         start_time = time.time()
         test_results = self.trainer.evaluate(test_dataloader)
         end_time = time.time()
         time_consumed = end_time - start_time
-        self.log(f'Test time consumed: {time_consumed:.2f} seconds')
+        self.log(f'[Pipeline] Test time: {time_consumed:.2f} seconds')
         if self.accelerator.is_main_process:
             for key in test_results:
-                print(f'{Colors.GREEN}{key}: {Colors.MAGENTA}{test_results[key]:.5f}{Colors.RESET}', end="")
+                print(f'[Pipeline] {Colors.GREEN}{key}: {Colors.MAGENTA}{test_results[key]:.5f}{Colors.RESET}', end="")
                 if key == list(test_results.keys())[-1]:
                     print()
-            self.log(f'Test Results: {test_results}')
-            self.log(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-            print(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            self.log(f'[Pipeline] Test results: {test_results}')
+            self.log(f"[Pipeline] Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            print(f"[Pipeline] Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         self.trainer.end()
         return {
             'best_epoch': best_epoch,
@@ -145,4 +145,4 @@ class Pipeline:
         )
     def log_config(self, config: dict):
         for k, v in sorted(config.items(), key=lambda item: item[0]):
-            self.log(f"  {k}: {v} ({type(v).__name__})")
+            self.log(f"[Config] {k}: {v} ({type(v).__name__})")
