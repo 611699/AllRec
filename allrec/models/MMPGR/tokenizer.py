@@ -114,17 +114,24 @@ class MMPGR_Tokenizer(AbstractTokenizer):
         with open(sem_ids_path, 'w') as f:
             json.dump(item2sem_ids, f, indent=4, ensure_ascii=False)
         return item2sem_ids
-    def _compute_similarity_stats_for_embs(self, embs: np.ndarray, name: str) -> dict:
+    def _compute_similarity_stats_for_embs(self, embs: np.ndarray, name: str, train_mask: np.ndarray) -> dict:
         embs = np.ascontiguousarray(embs, dtype=np.float32)
-        n_items = embs.shape[0]
+        train_mask = np.asarray(train_mask, dtype=bool)
+        if train_mask.shape[0] != embs.shape[0]:
+            raise ValueError(
+                f"{name} similarity stats train_mask shape mismatch: "
+                f"mask={train_mask.shape}, embeddings={embs.shape}"
+            )
+        stat_embs = np.ascontiguousarray(embs[train_mask], dtype=np.float32)
+        n_items = stat_embs.shape[0]
         if n_items <= 1:
-            raise ValueError(f"{name} similarity stats require at least 2 items.")
+            raise ValueError(f"{name} similarity stats require at least 2 training items.")
         block_size = max(1, int(self.config.get("similarity_stats_block_size", 2048)))
         min_val = np.inf
         max_val = -np.inf
-        for start in tqdm(range(0, n_items, block_size), desc=f"Computing {name} similarity stats"):
+        for start in tqdm(range(0, n_items, block_size), desc=f"Computing {name} train-item similarity stats"):
             end = min(start + block_size, n_items)
-            similarity_block = np.matmul(embs[start:end], embs.T).astype(np.float32, copy=False)
+            similarity_block = np.matmul(stat_embs[start:end], stat_embs.T).astype(np.float32, copy=False)
             row_idx = np.arange(end - start)
             col_idx = np.arange(start, end)
             similarity_block[row_idx, col_idx] = np.nan
@@ -133,7 +140,7 @@ class MMPGR_Tokenizer(AbstractTokenizer):
             min_val = min(min_val, float(block_min))
             max_val = max(max_val, float(block_max))
         self.log(
-            f"[Tokenizer] {name} similarity stats (excluding diagonal) -> "
+            f"[Tokenizer] {name} train-item similarity stats (excluding diagonal) -> "
             f"max: {max_val:.4f}, min: {min_val:.4f}"
         )
         return {
@@ -144,9 +151,15 @@ class MMPGR_Tokenizer(AbstractTokenizer):
         import hashlib
         embs = np.ascontiguousarray(embs, dtype=np.float32)
         return hashlib.blake2b(embs.view(np.uint8), digest_size=16).hexdigest()
-    def _prepare_realtime_similarity_targets(self, text_embs: np.ndarray, img_embs: np.ndarray, emb_dir: str):
+    def _prepare_realtime_similarity_targets(self, text_embs: np.ndarray, img_embs: np.ndarray, emb_dir: str, train_mask: np.ndarray):
         self.text_embs = np.ascontiguousarray(text_embs, dtype=np.float32)
         self.image_embs = np.ascontiguousarray(img_embs, dtype=np.float32)
+        train_mask = np.asarray(train_mask, dtype=bool)
+        if train_mask.shape[0] != self.text_embs.shape[0] or train_mask.shape[0] != self.image_embs.shape[0]:
+            raise ValueError(
+                "Similarity stats train_mask shape mismatch: "
+                f"mask={train_mask.shape}, text={self.text_embs.shape}, image={self.image_embs.shape}"
+            )
         text_fingerprint = self._embedding_fingerprint(self.text_embs)
         image_fingerprint = self._embedding_fingerprint(self.image_embs)
         stats_file = os.path.join(
@@ -183,12 +196,13 @@ class MMPGR_Tokenizer(AbstractTokenizer):
                 stats = None
         if stats is None:
             stats = {
-                "text": self._compute_similarity_stats_for_embs(self.text_embs, "Text"),
-                "image": self._compute_similarity_stats_for_embs(self.image_embs, "Image"),
+                "text": self._compute_similarity_stats_for_embs(self.text_embs, "Text", train_mask),
+                "image": self._compute_similarity_stats_for_embs(self.image_embs, "Image", train_mask),
                 "text_shape": list(self.text_embs.shape),
                 "image_shape": list(self.image_embs.shape),
                 "text_fingerprint": text_fingerprint,
                 "image_fingerprint": image_fingerprint,
+                "n_train_items_for_similarity_stats": int(train_mask.sum()),
             }
             with open(stats_file, "w") as f:
                 json.dump(stats, f, indent=4, ensure_ascii=False)
@@ -279,12 +293,12 @@ class MMPGR_Tokenizer(AbstractTokenizer):
         text_embs = self._encode_text_embs(dataset, emb_dir)
         img_embs = self._l2_normalize(img_embs)
         text_embs = self._l2_normalize(text_embs)
-        self._prepare_realtime_similarity_targets(text_embs, img_embs, emb_dir)
+        training_item_mask = self._get_items_for_training(dataset)
+        self._prepare_realtime_similarity_targets(text_embs, img_embs, emb_dir, training_item_mask)
         item2sem_ids = self._load_json_if_exists(sem_ids_path)
         if item2sem_ids is not None:
             self.log(f"[Tokenizer] Loaded cached semantic IDs from {sem_ids_path}")
             return self._sem_ids_to_tokens(item2sem_ids)
-        training_item_mask = self._get_items_for_training(dataset)
         modality = self.config["modality"]
         use_pca = bool(self.config.get("use_pca", False))
         n_components = int(self.config.get("PCA_n_components", 512))
